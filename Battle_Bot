@@ -1,0 +1,208 @@
+// Arduino IDE 1.8.16 - Motor Speed Calibration
+
+int D1ForwardSpeed = 255;
+int D1BackwardSpeed = 255;
+int D2ForwardSpeed = 255;
+int D2BackwardSpeed = 255;
+
+// Drive Curves
+// FORWARD
+int driveForwardRightCurveSpeed = 150;
+int driveForwardLeftCurveSpeed = 150;
+
+// BACKWARD
+int driveBackwardRightCurveSpeed = 150;
+int driveBackwardLeftCurveSpeed = 150;
+
+// Transmitter
+// TRANSMITTER PINS
+int varB = 2;
+int varA = 3;
+int rudStick = 4;
+int troStick = 5;
+int eleStick = 6;
+int aleStick = 7;
+
+// TRANSMITTER SIGNAL VARIABLES
+int varBPwm = 0;
+int varAPwm = 0;
+int rudPwm = 0;
+int troPwm = 0;
+int elePwm = 0;
+int alePwm = 0;
+
+// D1 DRIVE
+int D1RPWM = 10; // RPWM BLACK WIRE MOTOR FORWARD
+int D1LPWM = 11; // LPWM WHITE WIRE MOTOR BACKWARD
+int D1LEN = 14;  // LEN GREEN WIRE
+int D1REN = 15;  // REN BLUE WIRE
+
+// D2 DRIVE
+int D2RPWM = 8;  // RPWM BLACK WIRE MOTOR FORWARD
+int D2LPWM = 9;  // LPWM WHITE WIRE MOTOR BACKWARD
+int D2LEN = 16;  // LEN GREEN WIRE
+int D2REN = 17;  // REN BLUE WIRE
+
+void setup() {
+    Serial.begin(9600);
+    
+    pinMode(varB, INPUT);
+    pinMode(varA, INPUT);
+    pinMode(rudStick, INPUT);
+    pinMode(troStick, INPUT);
+    pinMode(eleStick, INPUT);
+    pinMode(aleStick, INPUT);
+    
+    // LED PINS
+    pinMode(22, OUTPUT);
+    pinMode(24, OUTPUT);
+    pinMode(26, OUTPUT);
+    pinMode(23, OUTPUT);
+    pinMode(25, OUTPUT);
+    pinMode(27, OUTPUT);
+    
+    // Side D1
+    pinMode(D1RPWM, OUTPUT);
+    pinMode(D1LPWM, OUTPUT);
+    pinMode(D1LEN, OUTPUT);
+    pinMode(D1REN, OUTPUT);
+    
+    // Side D2
+    pinMode(D2RPWM, OUTPUT);
+    pinMode(D2LPWM, OUTPUT);
+    pinMode(D2LEN, OUTPUT);
+    pinMode(D2REN, OUTPUT);
+}
+
+void varBCh() { varBPwm = pulseIn(varB, HIGH); }
+void varACh() { varAPwm = pulseIn(varA, HIGH); }
+void rudCh() { rudPwm = pulseIn(rudStick, HIGH); }
+void troCh() { troPwm = pulseIn(troStick, HIGH); }
+void eleCh() { elePwm = pulseIn(eleStick, HIGH); }
+void aleCh() { alePwm = pulseIn(aleStick, HIGH); }
+
+void txReadings() {
+    eleCh();
+    aleCh();
+}
+
+void printTx() {
+    txReadings();
+    Serial.print("VarB: "); Serial.print(varBPwm);
+    Serial.print(" VarA: "); Serial.print(varAPwm);
+    Serial.print(" Rud: "); Serial.print(rudPwm);
+    Serial.print(" Tro: "); Serial.print(troPwm);
+    Serial.print(" Ele: "); Serial.print(elePwm);
+    Serial.print(" Ale: "); Serial.println(alePwm);
+}
+
+// Individual Drive Functions
+void D1Forward(int speed) {
+    digitalWrite(D1LEN, HIGH);
+    digitalWrite(D1REN, HIGH);
+    analogWrite(D1RPWM, speed);
+    analogWrite(D1LPWM, 0);
+}
+
+void D1Backward(int speed) {
+    digitalWrite(D1LEN, HIGH);
+    digitalWrite(D1REN, HIGH);
+    analogWrite(D1RPWM, 0);
+    analogWrite(D1LPWM, speed);
+}
+
+void D2Forward(int speed) {
+    digitalWrite(D2LEN, HIGH);
+    digitalWrite(D2REN, HIGH);
+    analogWrite(D2RPWM, speed);
+    analogWrite(D2LPWM, 0);
+}
+
+void D2Backward(int speed) {
+    digitalWrite(D2LEN, HIGH);
+    digitalWrite(D2REN, HIGH);
+    analogWrite(D2RPWM, 0);
+    analogWrite(D2LPWM, speed);
+}
+
+void D1Stop() {
+    digitalWrite(D1LEN, HIGH);
+    digitalWrite(D1REN, HIGH);
+    analogWrite(D1RPWM, 255);
+    analogWrite(D1LPWM, 255);
+}
+
+void D2Stop() {
+    digitalWrite(D2LEN, HIGH);
+    digitalWrite(D2REN, HIGH);
+    analogWrite(D2RPWM, 255);
+    analogWrite(D2LPWM, 255);
+}
+
+// Robot Movements
+void driveForward() {
+    D1Forward(D1ForwardSpeed);
+    D2Forward(D2ForwardSpeed);
+}
+
+void driveBackward() {
+    D1Backward(D1BackwardSpeed);
+    D2Backward(D2BackwardSpeed);
+}
+
+void driveStop() {
+    D1Stop();
+    D2Stop();
+}
+
+void driveLeft360() {
+    D1Forward(D1ForwardSpeed);
+    D2Backward(D2BackwardSpeed);
+}
+
+void driveRight360() {
+    D2Forward(D2ForwardSpeed);
+    D1Backward(D1BackwardSpeed);
+}
+
+// Forward Curves
+void driveForwardRightCurve() {
+    D1Forward(D1ForwardSpeed - driveForwardRightCurveSpeed);
+    D2Forward(D2ForwardSpeed);
+}
+
+void driveForwardLeftCurve() {
+    D1Forward(D1ForwardSpeed);
+    D2Forward(D2ForwardSpeed - driveForwardLeftCurveSpeed);
+}
+
+// Backward Curves
+void driveBackwardRightCurve() {
+    D1Backward(D1BackwardSpeed - driveBackwardRightCurveSpeed);
+    D2Backward(D2BackwardSpeed);
+}
+
+void driveBackwardLeftCurve() {
+    D1Backward(D1BackwardSpeed);
+    D2Backward(D2BackwardSpeed - driveBackwardLeftCurveSpeed);
+}
+
+void manualControl() {
+    txReadings();
+    if (elePwm > 1600) {
+        driveForward();
+    } else if (elePwm < 1400) {
+        driveBackward();
+    } else if (alePwm < 1400) {
+        driveLeft360();
+    } else if (alePwm > 1600) {
+        driveRight360();
+    } else {
+        driveStop();
+    }
+}
+
+void loop() {
+    printTx();
+    manualControl();
+}
