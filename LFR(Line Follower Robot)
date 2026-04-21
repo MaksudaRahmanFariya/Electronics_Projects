@@ -1,104 +1,110 @@
+// ---------------- MOTOR PINS ----------------
 int mot1 = 9;
 int mot2 = 6;
 int mot3 = 5;
 int mot4 = 3;
 
-int left = 13;
-int right = 12;
+// ---------------- SENSOR PINS ----------------
+int s1 = 2;
+int s2 = 4;
+int s3 = 7;
 
-int Left = 0;
-int Right = 0;
+// ---------------- VARIABLES ----------------
+int sensors[3];
+int weights[3] = {-1, 0, 1};
 
-void LEFT();
-void RIGHT();
+int lastError = 0;
+int integral = 0;
+
+int baseSpeed = 180;
+int maxSpeed = 255;
+
+// PID constants
+float Kp = 35;
+float Kd = 25;
+float Ki = 0;
+
+// ---------------- FUNCTIONS ----------------
+void readSensors();
+int calculateError();
+void moveMotor(int leftSpeed, int rightSpeed);
 void STOP();
 
+// ---------------- SETUP ----------------
 void setup() {
   pinMode(mot1, OUTPUT);
   pinMode(mot2, OUTPUT);
   pinMode(mot3, OUTPUT);
   pinMode(mot4, OUTPUT);
 
-  pinMode(left, INPUT_PULLUP);   // Use internal pull-up resistors
-  pinMode(right, INPUT_PULLUP);
+  pinMode(s1, INPUT);
+  pinMode(s2, INPUT);
+  pinMode(s3, INPUT);
 
-  // Initialize motors to stop
   STOP();
 }
 
+// ---------------- LOOP ----------------
 void loop() {
-  // Move forward
-  analogWrite(mot1, 255);
+
+  readSensors();
+
+  int error = calculateError();
+
+  integral += error;
+  int derivative = error - lastError;
+
+  int correction = (Kp * error) + (Kd * derivative) + (Ki * integral);
+
+  int leftSpeed = baseSpeed - correction;
+  int rightSpeed = baseSpeed + correction;
+
+  leftSpeed = constrain(leftSpeed, 0, maxSpeed);
+  rightSpeed = constrain(rightSpeed, 0, maxSpeed);
+
+  moveMotor(leftSpeed, rightSpeed);
+
+  lastError = error;
+}
+
+// ---------------- READ SENSORS ----------------
+void readSensors() {
+  sensors[0] = digitalRead(s1);
+  sensors[1] = digitalRead(s2);
+  sensors[2] = digitalRead(s3);
+}
+
+// ---------------- ERROR CALCULATION ----------------
+int calculateError() {
+
+  int sum = 0;
+  int count = 0;
+
+  for (int i = 0; i < 3; i++) {
+    if (sensors[i] == 0) {   // line detected
+      sum += weights[i];
+      count++;
+    }
+  }
+
+  if (count == 0) {
+    return lastError; // keep direction if line lost
+  }
+
+  return sum / count;
+}
+
+// ---------------- MOTOR CONTROL ----------------
+void moveMotor(int leftSpeed, int rightSpeed) {
+
+  analogWrite(mot1, leftSpeed);
   analogWrite(mot2, 0);
-  analogWrite(mot3, 255);
-  analogWrite(mot4, 0);
 
-  while (1) {
-    Left = digitalRead(left);
-    Right = digitalRead(right);
-
-    if (Left == 0 && Right == 1) {
-      LEFT();
-    } else if (Right == 0 && Left == 1) {
-      RIGHT();
-    }
-  }
-}
-
-void LEFT() {
-  analogWrite(mot3, 0);
-  analogWrite(mot4, 30);
-
-  while (digitalRead(left) == 0) {
-    Left = digitalRead(left);
-    Right = digitalRead(right);
-    
-    if (Right == 0) {
-      int lprev = Left;
-      int rprev = Right;
-      STOP();
-
-      while (lprev == Left && rprev == Right) {
-        Left = digitalRead(left);
-        Right = digitalRead(right);
-      }
-    }
-
-    analogWrite(mot1, 255);
-    analogWrite(mot2, 0);
-  }
-
-  analogWrite(mot3, 255);
+  analogWrite(mot3, rightSpeed);
   analogWrite(mot4, 0);
 }
 
-void RIGHT() {
-  analogWrite(mot1, 0);
-  analogWrite(mot2, 30);
-
-  while (digitalRead(right) == 0) {
-    Left = digitalRead(left);
-    Right = digitalRead(right);
-    
-    if (Left == 0) {
-      int lprev = Left;
-      int rprev = Right;
-      STOP();
-
-      while (lprev == Left && rprev == Right) {
-        Left = digitalRead(left);
-        Right = digitalRead(right);
-      }
-    }
-
-    analogWrite(mot3, 255);
-    analogWrite(mot4, 0);
-  }
-
-  analogWrite(mot1, 255);
-  analogWrite(mot2, 0);
-}
-
+// ---------------- STOP ----------------
 void STOP() {
   analogWrite(mot1, 0);
   analogWrite(mot2, 0);
